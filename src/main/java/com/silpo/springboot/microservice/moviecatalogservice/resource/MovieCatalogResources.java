@@ -3,6 +3,7 @@ package com.silpo.springboot.microservice.moviecatalogservice.resource;
 import com.silpo.springboot.microservice.moviecatalogservice.model.CatalogItem;
 import com.silpo.springboot.microservice.moviecatalogservice.model.Movie;
 import com.silpo.springboot.microservice.moviecatalogservice.model.Rating;
+import com.silpo.springboot.microservice.moviecatalogservice.model.UserRating;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -25,11 +26,63 @@ public class MovieCatalogResources {
     @Autowired
     private WebClient.Builder webclientBuilder;
 
-    @RequestMapping("/{userId}")
+    @RequestMapping("resttemplate/{userId}")
+    //http://localhost:8081/catalog/resttemplate/user123
     public List<CatalogItem> getCatalog(@PathVariable("userId") String userId) {
 
-        //Movie movie = restTemplate.getForObject("http://localhost:8082/movies/1234", Movie.class);
-        //get all movie ids
+        //get all movie ratings from APIs
+        UserRating userRating = restTemplate.getForObject("http://localhost:8083/ratingsdata/users/"+userId, UserRating.class); //calls parameterized constructor
+
+        //for each movie id, call movie info service and get details
+        //put all together
+        return userRating.getUserRatings().stream().map(rating -> {
+            //Using RestTemplate, Spring is deprecating this
+            Movie movie = restTemplate.getForObject("http://localhost:8082/movies/"+rating.getMovieId(), Movie.class); //getting the data from movie-info-service
+
+            return new CatalogItem(movie.getName(), "trans - " + userId, rating.getRating());
+        }).collect(Collectors.toList());
+
+    }
+
+    @RequestMapping("webclient/{userId}")
+    //http://localhost:8081/catalog/webclient/user123
+    public List<CatalogItem> getCatalogUsingWebClient(@PathVariable("userId") String userId) {
+
+        //get all movie ratings from APIs using WebClient
+        UserRating userRating = webclientBuilder.build()
+                .get()
+                .uri("http://localhost:8083/ratingsdata/users/"+ userId)
+                .retrieve()
+                //empty container will notify once gets data
+                .bodyToMono(UserRating.class)
+                //waits until mono is getting the data
+                .block();
+
+        //for each movie id, call movie info service and get details
+        //put all together
+        return userRating.getUserRatings().stream().map(rating -> {
+            //Using Webclient.Builder
+            //RestTemplate suppose to be deprecated in the future,
+            //So this should be used it is Reactive or asynchronous
+            Movie movie = webclientBuilder.build()
+                    .get()
+                    .uri("http://localhost:8082/movies/"+rating.getMovieId())
+                    .retrieve()
+                    //empty container will notify once gets data
+                    .bodyToMono(Movie.class)
+                    //waits until mono is getting the data
+                    .block();
+
+            return new CatalogItem(movie.getName(), "trans - " + userId, rating.getRating());
+        }).collect(Collectors.toList());
+
+    }
+
+    @RequestMapping("hardcoded/{userId}")
+    //http://localhost:8081/catalog/hardcoded/user123
+    public List<CatalogItem> getCatalogHC(@PathVariable("userId") String userId) {
+
+        //get all movie ratings hardcoded
         List<Rating> ratings = Arrays.asList(
                 new Rating("7354", "4"),
                 new Rating("46rf8", "3")
@@ -37,32 +90,8 @@ public class MovieCatalogResources {
 
         //for each movie id, call movie info service and get details
         //put all together
-        return ratings.stream().map(rating -> {
-            //Using RestTemplate
-            //Deprecating this
-            Movie movie = restTemplate.getForObject("http://localhost:8082/movies/"+rating.getMovieId(), Movie.class); //getting the data from movie-info-service
-
-            //Using Webclient.Builder
-            //RestTemplate suppose to be deprecated in the future,
-            //So this should be used it is Reactive or asynchronous
-            /*Movie movie = webclientBuilder.build()
-                    .get()
-                    .uri("http://localhost:8082/movies/"+rating.getMovieId())
-                    .retrieve()
-                    //empty container will notify once gets data
-                    .bodyToMono(Movie.class)
-                    //waits until mono is getting the data
-                    .block();*/
-
-
-
-            return new CatalogItem(movie.getName(), "trans - " + userId, rating.getRating());
-        }).collect(Collectors.toList());
-
-
-
-        /*return Collections.singletonList(
-                new CatalogItem("Transformers", "trans - " + userId, "4"));*/
+        return Collections.singletonList(
+                new CatalogItem("Transformers", "trans - " + userId, "4"));
 
     }
 }
