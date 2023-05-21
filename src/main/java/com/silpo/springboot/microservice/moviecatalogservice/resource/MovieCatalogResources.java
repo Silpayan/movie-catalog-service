@@ -31,13 +31,25 @@ public class MovieCatalogResources {
     public List<CatalogItem> getCatalog(@PathVariable("userId") String userId) {
 
         //get all movie ratings from APIs
-        UserRating userRating = restTemplate.getForObject("http://localhost:8083/ratingsdata/users/"+userId, UserRating.class); //calls parameterized constructor
+        //calls parameterized constructor
+        //UserRating userRating = restTemplate.getForObject("http://localhost:8083/ratingsdata/users/"+userId, UserRating.class);
+
+        //using Eureka, application mapping name "rating-data" taken from application.properties of the app
+        //works only with Eureka app running and @LoadBalanced in RestTemplate Bean.
+        //this urls is cached so not calling Eureka for each call
+        UserRating userRating = restTemplate.getForObject("http://rating-data/ratingsdata/users/"+userId, UserRating.class);
+
 
         //for each movie id, call movie info service and get details
         //put all together
         return userRating.getUserRatings().stream().map(rating -> {
             //Using RestTemplate, Spring is deprecating this
-            Movie movie = restTemplate.getForObject("http://localhost:8082/movies/"+rating.getMovieId(), Movie.class); //getting the data from movie-info-service
+            //Movie movie = restTemplate.getForObject("http://localhost:8082/movies/"+rating.getMovieId(), Movie.class); //getting the data from movie-info-service
+
+            //using Eureka, application mapping name "movie-info" taken from application.properties of the app
+            //works only with Eureka app running and @LoadBalanced in RestTemplate Bean.
+            Movie movie = restTemplate.getForObject("http://movie-info/movies/"+rating.getMovieId(), Movie.class); //getting the data from movie-info-service
+
 
             return new CatalogItem(movie.getName(), "trans - " + userId, rating.getRating());
         }).collect(Collectors.toList());
