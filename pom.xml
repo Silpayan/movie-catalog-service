@@ -24,12 +24,6 @@
 			<artifactId>spring-boot-starter-web</artifactId>
 		</dependency>
 
-		<!-- Adding Eureka client for register itself to Eureka Server-->
-		<dependency>
-			<groupId>org.springframework.cloud</groupId>
-			<artifactId>spring-cloud-starter-netflix-eureka-client</artifactId>
-		</dependency>
-
 		<!-- Adding webflux-->
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
@@ -41,6 +35,30 @@
 			<artifactId>spring-boot-starter-test</artifactId>
 			<scope>test</scope>
 		</dependency>
+
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-actuator</artifactId>
+			<scope>test</scope>
+		</dependency>
+
+		<!-- Adding Eureka client for register itself to Eureka Server
+		<dependency>
+			<groupId>org.springframework.cloud</groupId>
+			<artifactId>spring-cloud-starter-netflix-eureka-client</artifactId>
+		</dependency>-->
+		<!-- Adding hystrix -->
+		<dependency>
+			<groupId>org.springframework.cloud</groupId>
+			<artifactId>spring-cloud-starter-netflix-hystrix</artifactId>
+			<version>2.2.4.RELEASE</version>
+		</dependency>
+		<!-- hystrix dashboard
+		<dependency>
+			<groupId>org.springframework.cloud</groupId>
+			<artifactId>spring-cloud-netflix-hystrix-dashboard</artifactId>
+		</dependency>-->
+
 	</dependencies>
 
 	<!-- Added later but why? -->

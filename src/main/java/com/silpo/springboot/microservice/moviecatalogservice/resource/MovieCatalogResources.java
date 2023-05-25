@@ -1,5 +1,7 @@
 package com.silpo.springboot.microservice.moviecatalogservice.resource;
 
+import com.netflix.hystrix.contrib.javanica.annotation.HystrixCommand;
+import com.netflix.hystrix.contrib.javanica.annotation.HystrixProperty;
 import com.silpo.springboot.microservice.moviecatalogservice.model.CatalogItem;
 import com.silpo.springboot.microservice.moviecatalogservice.model.Movie;
 import com.silpo.springboot.microservice.moviecatalogservice.model.Rating;
@@ -27,6 +29,23 @@ public class MovieCatalogResources {
     private WebClient.Builder webclientBuilder;
 
     @RequestMapping("resttemplate/{userId}")
+    @HystrixCommand(fallbackMethod = "getFallbackCatalog",
+            threadPoolKey = "getProductThreadPool",
+            commandProperties = {
+                    @HystrixProperty(name = "execution.isolation.thread.timeoutInMilliseconds", value = "50"),
+                    @HystrixProperty(name = "circuitBreaker.requestVolumeThreshold", value = "10"),
+                    @HystrixProperty(name = "circuitBreaker.sleepWindowInMilliseconds", value = "1000"),
+                    @HystrixProperty(name = "circuitBreaker.errorThresholdPercentage", value = "10"),
+                    @HystrixProperty(name = "execution.isolation.strategy", value = "THREAD"),
+                    @HystrixProperty(name = "metrics.rollingStats.timeInMilliseconds", value = "20000"),
+                    @HystrixProperty(name = "metrics.rollingPercentile.timeInMilliseconds", value = "20000"),
+                    @HystrixProperty(name = "metrics.healthSnapshot.intervalInMilliseconds", value = "5000"),
+                    @HystrixProperty(name = "fallback.isolation.semaphore.maxConcurrentRequests", value = "100")
+            },
+            threadPoolProperties = {
+                    @HystrixProperty(name = "coreSize", value = "30"),
+                    @HystrixProperty(name = "maxQueueSize", value = "-1"),
+            })
     //http://localhost:8081/catalog/resttemplate/user123
     public List<CatalogItem> getCatalog(@PathVariable("userId") String userId) {
 
@@ -44,11 +63,13 @@ public class MovieCatalogResources {
         //put all together
         return userRating.getUserRatings().stream().map(rating -> {
             //Using RestTemplate, Spring is deprecating this
-            //Movie movie = restTemplate.getForObject("http://localhost:8082/movies/"+rating.getMovieId(), Movie.class); //getting the data from movie-info-service
+            //getting the data from movie-info-service
+            //Movie movie = restTemplate.getForObject("http://localhost:8082/movies/"+rating.getMovieId(), Movie.class);
 
             //using Eureka, application mapping name "movie-info" taken from application.properties of the app
             //works only with Eureka app running and @LoadBalanced in RestTemplate Bean.
-            Movie movie = restTemplate.getForObject("http://movie-info/movies/"+rating.getMovieId(), Movie.class); //getting the data from movie-info-service
+            //getting the data from movie-info-service
+            Movie movie = restTemplate.getForObject("http://movie-info/movies/"+rating.getMovieId(), Movie.class);
 
 
             return new CatalogItem(movie.getName(), "trans - " + userId, rating.getRating());
@@ -56,8 +77,14 @@ public class MovieCatalogResources {
 
     }
 
+    public List<CatalogItem> getFallbackCatalog(@PathVariable("userId") String userId) {
+            return Arrays.asList(
+                    new CatalogItem("No Movie", "", "0"));
+    }
+
     @RequestMapping("webclient/{userId}")
     //http://localhost:8081/catalog/webclient/user123
+    @HystrixCommand(fallbackMethod = "getFallbackCatalog")
     public List<CatalogItem> getCatalogUsingWebClient(@PathVariable("userId") String userId) {
 
         //get all movie ratings from APIs using WebClient
